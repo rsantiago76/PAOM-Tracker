@@ -1,15 +1,26 @@
 // src/integrations/Core.js
-// Minimal stub so Base44-generated pages can build without the Base44 runtime.
-// Replace/expand later if you restore full Base44 backend wiring.
+// Offline stub for Base44 "Core" integration so Amplify can build.
+// Provides the named exports the app expects.
 
-export const Core = {
-  // Some Base44 templates expect an init() call
-  init: async () => true,
-
-  // Some templates reference a base client / config
-  config: {
+export async function InvokeLLM(input = {}) {
+  // Return a predictable shape so UI doesn't crash if it tries to render output.
+  // Adjust fields if AIAllocation.jsx expects something different.
+  return {
+    ok: true,
     mode: "offline",
-  },
+    input,
+    output:
+      "InvokeLLM is running in offline mode (no Base44 proxy / backend configured).",
+    tokens_used: 0,
+    model: "offline-stub",
+  };
+}
+
+// Some pages may also import a default or Core object
+export const Core = {
+  init: async () => true,
+  config: { mode: "offline" },
+  InvokeLLM,
 };
 
 export default Core;
