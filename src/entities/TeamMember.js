@@ -1,15 +1,43 @@
 // src/entities/TeamMember.js
-// Minimal stub so Vite/Amplify builds succeed.
-// Replace with real Base44 SDK entity when backend is connected.
+// Offline entity stub.
 
-import { base44 } from "@/api/base44Client";
+let MEMBERS = [
+  {
+    id: "member_1",
+    name: "Alex Morgan",
+    role: "Content Strategist",
+    current_workload: 35,
+    availability: 80,
+    skills: { content: 8, seo: 7, writing: 9 },
+  },
+  {
+    id: "member_2",
+    name: "Jordan Lee",
+    role: "SEO Specialist",
+    current_workload: 50,
+    availability: 70,
+    skills: { seo: 9, analytics: 8, content: 6 },
+  },
+];
 
 export const TeamMember = {
-  list: (params) => base44.entities.TeamMember.list(params),
-  getById: (id) => base44.entities.TeamMember.getById(id),
-  create: (payload) => base44.entities.TeamMember.create(payload),
-  update: (id, patch) => base44.entities.TeamMember.update(id, patch),
-  remove: (id) => base44.entities.TeamMember.remove(id),
+  async list() {
+    return [...MEMBERS];
+  },
+
+  async create(payload = {}) {
+    const item = { id: payload.id || `member_${Date.now()}`, ...payload };
+    MEMBERS = [item, ...MEMBERS];
+    return item;
+  },
+
+  async update(id, patch = {}) {
+    const idx = MEMBERS.findIndex((m) => String(m.id) === String(id));
+    if (idx === -1) return null;
+    MEMBERS[idx] = { ...MEMBERS[idx], ...patch, id: MEMBERS[idx].id };
+    return MEMBERS[idx];
+  },
 };
 
 export default TeamMember;
+
