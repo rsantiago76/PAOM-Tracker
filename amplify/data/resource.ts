@@ -15,7 +15,7 @@ const schema = a.schema({
   Finding: a
     .model({
       systemId: a.string().required(),
-      
+
       // fields your UI expects
       findingNumber: a.string(),
       systemName: a.string(),
@@ -52,6 +52,16 @@ const schema = a.schema({
       role: a.string(),
       availability: a.integer(),
       currentWorkload: a.integer(),
+      createdAt: a.datetime(),
+      updatedAt: a.datetime(),
+    })
+    .authorization((allow) => [allow.publicApiKey()]),
+  Milestone: a
+    .model({
+      findingId: a.string().required(),
+      title: a.string().required(),
+      dueDate: a.datetime(),
+      status: a.string(),
       createdAt: a.datetime(),
       updatedAt: a.datetime(),
     })
