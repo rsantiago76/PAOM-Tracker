@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { client } from '@/api/amplifyClient';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,7 +27,9 @@ export default function Findings() {
     queryFn: async () => {
       // Fetch findings with proper sorting: severity desc, due_date asc, updated_date desc
       const severityOrder = { 'Critical': 5, 'High': 4, 'Medium': 3, 'Low': 2, 'Informational': 1 };
-      const allFindings = await base44.entities.Finding.list('-updated_date', 50);
+      const { data: allFindings } = await client.models.Finding.list({
+        limit: 50
+      });
 
       return allFindings.sort((a, b) => {
         // 1. Sort by severity (desc)
@@ -42,7 +44,7 @@ export default function Findings() {
         else if (b.due_date) return 1;
 
         // 3. Sort by updated_date (desc)
-        return new Date(b.updated_date || 0) - new Date(a.updated_date || 0);
+        return new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0);
       });
     },
     retry: 1,
@@ -50,7 +52,10 @@ export default function Findings() {
 
   const { data: milestones = [] } = useQuery({
     queryKey: ['milestones'],
-    queryFn: () => base44.entities.Milestone.list(),
+    queryFn: async () => {
+      const { data } = await client.models.Milestone.list();
+      return data;
+    }
   });
 
   const glassPanel = "bg-slate-900/45 border border-slate-700/60 rounded-2xl shadow-md backdrop-blur";
@@ -205,7 +210,7 @@ export default function Findings() {
 
               <tbody>
                 {filteredFindings.map((finding) => {
-                  const findingMilestones = milestones.filter(m => m.finding_id === finding.id);
+                  const findingMilestones = milestones.filter(m => m.findingId === finding.id);
                   const completedMilestones = findingMilestones.filter(m => m.status === 'COMPLETED').length;
 
                   // Calculate milestone health for this finding
@@ -215,15 +220,15 @@ export default function Findings() {
                   sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
 
                   const hasOverdue = findingMilestones.some(m => {
-                    if (m.status === 'COMPLETED' || !m.due_date) return false;
-                    const dueDate = new Date(m.due_date);
+                    if (m.status === 'COMPLETED' || !m.dueDate) return false;
+                    const dueDate = new Date(m.dueDate);
                     dueDate.setHours(0, 0, 0, 0);
                     return dueDate < today;
                   });
 
                   const hasDueSoon = !hasOverdue && findingMilestones.some(m => {
-                    if (m.status === 'COMPLETED' || !m.due_date) return false;
-                    const dueDate = new Date(m.due_date);
+                    if (m.status === 'COMPLETED' || !m.dueDate) return false;
+                    const dueDate = new Date(m.dueDate);
                     dueDate.setHours(0, 0, 0, 0);
                     return dueDate >= today && dueDate <= sevenDaysFromNow;
                   });
@@ -236,16 +241,16 @@ export default function Findings() {
                       style={{ cursor: 'pointer' }}
                     >
                       <td className={`px-4 py-3 ${cellMuted} font-mono text-xs`}>
-                        {finding.finding_number}
+                        {finding.findingNumber}
                       </td>
                       <td className={`px-4 py-3 ${cellText} font-medium`}>
                         {finding.title}
-                        {finding.due_date && new Date(finding.due_date) < new Date() && finding.status !== 'Closed' && (
+                        {finding.dueDate && new Date(finding.dueDate) < new Date() && finding.status !== 'Closed' && (
                           <AlertTriangle className="inline w-3 h-3 ml-2 text-red-400" />
                         )}
                       </td>
                       <td className={`px-4 py-3 ${cellMuted}`}>
-                        {finding.system_name || '—'}
+                        {finding.systemName || '—'}
                       </td>
                       <td className="px-4 py-3">
                         <SeverityBadge severity={finding.severity} />
@@ -282,10 +287,10 @@ export default function Findings() {
                         )}
                       </td>
                       <td className={`px-4 py-3 ${cellMuted}`}>
-                        {finding.assigned_to_name || 'Unassigned'}
+                        {finding.assignedToName || 'Unassigned'}
                       </td>
                       <td className={`px-4 py-3 ${cellMuted}`}>
-                        {finding.due_date ? new Date(finding.due_date).toLocaleDateString() : '—'}
+                        {finding.dueDate ? new Date(finding.dueDate).toLocaleDateString() : '—'}
                       </td>
                     </tr>
                   );
