@@ -242,6 +242,37 @@ export async function seedDatabase() {
                 log(`  - Added Finding: ${f.title}`);
             }
         }
+
+        // 4. Promote Current User to ADMIN
+        try {
+            const { getCurrentUser } = await import('aws-amplify/auth');
+            const authUser = await getCurrentUser();
+            const email = authUser.signInDetails?.loginId;
+
+            if (email) {
+                const { data: users } = await client.models.User.list({
+                    filter: { email: { eq: email } }
+                });
+
+                if (users.length > 0) {
+                    await client.models.User.update({
+                        id: users[0].id,
+                        role: 'ADMIN'
+                    });
+                    log(`Promoted user ${email} to ADMIN`);
+                } else {
+                    await client.models.User.create({
+                        email: email,
+                        role: 'ADMIN',
+                        status: 'ACTIVE'
+                    });
+                    log(`Created ADMIN user for ${email}`);
+                }
+            }
+        } catch (authErr) {
+            log(`Skipping admin promotion: ${authErr.message}`);
+        }
+
         return { success: true, logs };
     } catch (err) {
         log(`Seeding failed: ${err.message}`);
