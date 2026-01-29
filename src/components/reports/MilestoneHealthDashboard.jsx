@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { client } from '@/api/amplifyClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, AlertCircle, Clock, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -9,17 +9,23 @@ import { createPageUrl } from '../../utils';
 export default function MilestoneHealthDashboard() {
   const { data: milestones = [], isLoading } = useQuery({
     queryKey: ['milestones'],
-    queryFn: () => base44.entities.Milestone.list(),
+    queryFn: async () => {
+      const { data } = await client.models.Milestone.list();
+      return data.map(m => ({ ...m, due_date: m.dueDate, finding_id: m.findingId }));
+    },
   });
 
   const { data: findings = [] } = useQuery({
     queryKey: ['findings'],
-    queryFn: () => base44.entities.Finding.list(),
+    queryFn: async () => {
+      const { data } = await client.models.Finding.list();
+      return data.map(f => ({ ...f, finding_number: f.findingNumber, system_name: f.systemName }));
+    },
   });
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const sevenDaysFromNow = new Date(today);
   sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
 
@@ -48,7 +54,7 @@ export default function MilestoneHealthDashboard() {
         dueDate.setHours(0, 0, 0, 0);
         return dueDate < today;
       }).length;
-      
+
       return { finding: f, overdueCount: overdueMilestoneCount };
     })
     .filter(item => item.overdueCount > 0)
@@ -57,12 +63,12 @@ export default function MilestoneHealthDashboard() {
 
   const avgDaysOverdue = overdueMillestones.length > 0
     ? Math.round(
-        overdueMillestones.reduce((sum, m) => {
-          const dueDate = new Date(m.due_date);
-          const daysDiff = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
-          return sum + daysDiff;
-        }, 0) / overdueMillestones.length
-      )
+      overdueMillestones.reduce((sum, m) => {
+        const dueDate = new Date(m.due_date);
+        const daysDiff = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+        return sum + daysDiff;
+      }, 0) / overdueMillestones.length
+    )
     : 0;
 
   if (isLoading) {

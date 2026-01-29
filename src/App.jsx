@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import './App.css'
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -67,6 +68,10 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+
+  useEffect(() => {
+    document.title = "POAM Tracker";
+  }, []);
 
   return (
     <AuthProvider>

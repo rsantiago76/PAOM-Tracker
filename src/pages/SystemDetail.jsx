@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { client } from '@/api/amplifyClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,21 +19,40 @@ export default function SystemDetail() {
   const { data: system, isLoading: systemLoading } = useQuery({
     queryKey: ['system', systemId],
     queryFn: async () => {
-      const systems = await base44.entities.System.list();
-      return systems.find(s => s.id === systemId);
+      const { data } = await client.models.System.get({ id: systemId });
+      // Map fields for UI compatibility if needed (camelCase -> snake_case)
+      if (data) {
+        return {
+          ...data,
+          owner_name: data.ownerName,
+          active_status: data.activeStatus,
+        };
+      }
+      return data;
     },
     enabled: !!systemId,
   });
 
   const { data: findings = [] } = useQuery({
     queryKey: ['findings', systemId],
-    queryFn: () => base44.entities.Finding.list(),
+    queryFn: async () => {
+      const { data } = await client.models.Finding.list();
+      return data.map(f => ({
+        ...f,
+        system_id: f.systemId,
+        finding_number: f.findingNumber,
+        due_date: f.dueDate,
+      }));
+    },
     enabled: !!systemId,
   });
 
   const { data: boundaries = [] } = useQuery({
     queryKey: ['boundaries'],
-    queryFn: () => base44.entities.Boundary.list(),
+    queryFn: async () => {
+      const { data } = await client.models.Boundary.list();
+      return data;
+    },
   });
 
   const systemFindings = findings.filter(f => f.system_id === systemId);
@@ -75,100 +94,100 @@ export default function SystemDetail() {
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-slate-900/45 border border-slate-700/60 backdrop-blur shadow-md">
-          <CardHeader>
-            <CardTitle className="text-slate-200 text-sm">Environment</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Badge className={
-              system.environment === 'PROD' ? 'bg-red-900/50 text-red-200 border-red-700' :
-              system.environment === 'STAGE' ? 'bg-yellow-900/50 text-yellow-200 border-yellow-700' :
-              system.environment === 'TEST' ? 'bg-blue-900/50 text-blue-200 border-blue-700' :
-              'bg-green-900/50 text-green-200 border-green-700'
-            }>
-              {system.environment}
-            </Badge>
-          </CardContent>
-        </Card>
+            <Card className="bg-slate-900/45 border border-slate-700/60 backdrop-blur shadow-md">
+              <CardHeader>
+                <CardTitle className="text-slate-200 text-sm">Environment</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Badge className={
+                  system.environment === 'PROD' ? 'bg-red-900/50 text-red-200 border-red-700' :
+                    system.environment === 'STAGE' ? 'bg-yellow-900/50 text-yellow-200 border-yellow-700' :
+                      system.environment === 'TEST' ? 'bg-blue-900/50 text-blue-200 border-blue-700' :
+                        'bg-green-900/50 text-green-200 border-green-700'
+                }>
+                  {system.environment}
+                </Badge>
+              </CardContent>
+            </Card>
 
-        <Card className="bg-slate-900/45 border border-slate-700/60 backdrop-blur shadow-md">
-          <CardHeader>
-            <CardTitle className="text-slate-200 text-sm">Boundary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {currentBoundary ? (
-              <BoundaryBadge boundary={currentBoundary} />
-            ) : (
-              <p className="text-slate-300">{system.boundary}</p>
-            )}
-          </CardContent>
-        </Card>
+            <Card className="bg-slate-900/45 border border-slate-700/60 backdrop-blur shadow-md">
+              <CardHeader>
+                <CardTitle className="text-slate-200 text-sm">Boundary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {currentBoundary ? (
+                  <BoundaryBadge boundary={currentBoundary} />
+                ) : (
+                  <p className="text-slate-300">{system.boundary}</p>
+                )}
+              </CardContent>
+            </Card>
 
-        <Card className="bg-slate-900/45 border border-slate-700/60 backdrop-blur shadow-md">
-          <CardHeader>
-            <CardTitle className="text-slate-200 text-sm">Owner</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-slate-300">{system.owner_name || 'Unassigned'}</p>
-          </CardContent>
-        </Card>
-      </div>
+            <Card className="bg-slate-900/45 border border-slate-700/60 backdrop-blur shadow-md">
+              <CardHeader>
+                <CardTitle className="text-slate-200 text-sm">Owner</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-slate-300">{system.owner_name || 'Unassigned'}</p>
+              </CardContent>
+            </Card>
+          </div>
 
-      {system.description && (
-        <Card className="bg-slate-900/45 border border-slate-700/60 backdrop-blur shadow-md">
-          <CardHeader>
-            <CardTitle className="text-slate-200">Description</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-slate-300">{system.description}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card className="bg-slate-900/45 border border-slate-700/60 backdrop-blur shadow-md">
-        <CardHeader>
-          <CardTitle className="text-slate-200 flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5" />
-            Findings ({openFindings.length} Open)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {systemFindings.length === 0 ? (
-            <p className="text-slate-400 text-center py-8">No findings for this system</p>
-          ) : (
-            <div className="space-y-3">
-              {systemFindings.map((finding) => (
-                <Link
-                  key={finding.id}
-                  to={createPageUrl(`FindingDetail?id=${finding.id}`)}
-                  className="block p-4 bg-slate-800/40 rounded-lg hover:bg-slate-800/60 transition-colors border border-slate-700/60"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge className={
-                          finding.severity === 'Critical' ? 'bg-red-900/50 text-red-200 border-red-700' :
-                          finding.severity === 'High' ? 'bg-orange-900/50 text-orange-200 border-orange-700' :
-                          finding.severity === 'Medium' ? 'bg-yellow-900/50 text-yellow-200 border-yellow-700' :
-                          'bg-blue-900/50 text-blue-200 border-blue-700'
-                        }>
-                          {finding.severity}
-                        </Badge>
-                        <Badge variant="outline" className="border-slate-600 text-slate-300">
-                          {finding.status}
-                        </Badge>
-                      </div>
-                      <h4 className="font-semibold text-slate-200 mb-1">{finding.title}</h4>
-                      <p className="text-xs text-slate-400">{finding.finding_number}</p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
+          {system.description && (
+            <Card className="bg-slate-900/45 border border-slate-700/60 backdrop-blur shadow-md">
+              <CardHeader>
+                <CardTitle className="text-slate-200">Description</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-slate-300">{system.description}</p>
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
-      </TabsContent>
+
+          <Card className="bg-slate-900/45 border border-slate-700/60 backdrop-blur shadow-md">
+            <CardHeader>
+              <CardTitle className="text-slate-200 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                Findings ({openFindings.length} Open)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {systemFindings.length === 0 ? (
+                <p className="text-slate-400 text-center py-8">No findings for this system</p>
+              ) : (
+                <div className="space-y-3">
+                  {systemFindings.map((finding) => (
+                    <Link
+                      key={finding.id}
+                      to={createPageUrl(`FindingDetail?id=${finding.id}`)}
+                      className="block p-4 bg-slate-800/40 rounded-lg hover:bg-slate-800/60 transition-colors border border-slate-700/60"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge className={
+                              finding.severity === 'Critical' ? 'bg-red-900/50 text-red-200 border-red-700' :
+                                finding.severity === 'High' ? 'bg-orange-900/50 text-orange-200 border-orange-700' :
+                                  finding.severity === 'Medium' ? 'bg-yellow-900/50 text-yellow-200 border-yellow-700' :
+                                    'bg-blue-900/50 text-blue-200 border-blue-700'
+                            }>
+                              {finding.severity}
+                            </Badge>
+                            <Badge variant="outline" className="border-slate-600 text-slate-300">
+                              {finding.status}
+                            </Badge>
+                          </div>
+                          <h4 className="font-semibold text-slate-200 mb-1">{finding.title}</h4>
+                          <p className="text-xs text-slate-400">{finding.finding_number}</p>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="change-history" className="space-y-4">
           <BoundaryChangeHistory systemId={systemId} />

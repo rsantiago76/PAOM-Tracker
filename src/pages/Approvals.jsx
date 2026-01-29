@@ -1,12 +1,10 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { getCurrentUserProfile } from '@/lib/auth';
 import ApprovalRequestsList from '../components/approvals/ApprovalRequestsList';
 
 export default function Approvals() {
   const { data: currentUser } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentUserProfile(),
   });
 
   const isComplianceLead = currentUser?.role === 'admin';

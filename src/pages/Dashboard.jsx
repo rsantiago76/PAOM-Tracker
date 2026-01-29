@@ -1,12 +1,12 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { client } from '@/api/amplifyClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  AlertTriangle, 
-  TrendingUp, 
-  Clock, 
+import {
+  AlertTriangle,
+  TrendingUp,
+  Clock,
   CheckCircle2,
   AlertCircle,
   Server,
@@ -18,12 +18,32 @@ import { createPageUrl } from '../utils';
 export default function Dashboard() {
   const { data: findings = [] } = useQuery({
     queryKey: ['findings'],
-    queryFn: () => base44.entities.Finding.list(),
+    queryFn: async () => {
+      const { data } = await client.models.Finding.list();
+      return data.map(f => ({
+        ...f,
+        finding_number: f.findingNumber,
+        due_date: f.dueDate,
+        actual_closure_date: f.actualClosureDate,
+        system_name: f.systemName,
+        // Ensure status/severity are correct casing if needed, but schema matches typical UI usage
+      }));
+    },
   });
 
   const { data: systems = [] } = useQuery({
     queryKey: ['systems'],
-    queryFn: () => base44.entities.System.list(),
+    queryFn: async () => {
+      const { data } = await client.models.System.list();
+      return data.map(s => ({
+        ...s,
+        // Dashboard uses s.status in line 190. Systems.jsx used s.active_status.
+        // We'll map activeStatus to both to be safe.
+        status: s.activeStatus,
+        active_status: s.activeStatus,
+        created_date: s.createdAt,
+      }));
+    },
   });
 
   // Calculate metrics
@@ -38,8 +58,8 @@ export default function Dashboard() {
     if (!f.actual_closure_date) return false;
     const closureDate = new Date(f.actual_closure_date);
     const now = new Date();
-    return closureDate.getMonth() === now.getMonth() && 
-           closureDate.getFullYear() === now.getFullYear();
+    return closureDate.getMonth() === now.getMonth() &&
+      closureDate.getFullYear() === now.getFullYear();
   });
 
   // Severity breakdown
@@ -152,12 +172,11 @@ export default function Dashboard() {
                   </Badge>
                   <div className="flex-1 bg-slate-700/50 rounded-full h-2 w-32">
                     <div
-                      className={`h-2 rounded-full ${
-                        severity === 'Critical' ? 'bg-red-500' :
+                      className={`h-2 rounded-full ${severity === 'Critical' ? 'bg-red-500' :
                         severity === 'High' ? 'bg-orange-500' :
-                        severity === 'Medium' ? 'bg-yellow-500' :
-                        'bg-blue-500'
-                      }`}
+                          severity === 'Medium' ? 'bg-yellow-500' :
+                            'bg-blue-500'
+                        }`}
                       style={{
                         width: `${openFindings.length > 0 ? (count / openFindings.length) * 100 : 0}%`
                       }}
@@ -190,7 +209,7 @@ export default function Dashboard() {
                   {systems.filter(s => s.status === 'Active').length}
                 </span>
               </div>
-              <Link 
+              <Link
                 to={createPageUrl('Systems')}
                 className="block text-center mt-4 text-blue-400 hover:text-blue-300 font-medium text-sm"
               >
@@ -209,7 +228,7 @@ export default function Dashboard() {
               <Calendar className="w-5 h-5 mr-2 text-slate-300" />
               Recent High Priority Findings
             </span>
-            <Link 
+            <Link
               to={createPageUrl('Findings')}
               className="text-sm text-blue-400 hover:text-blue-300 font-medium"
             >

@@ -1,5 +1,5 @@
 // src/entities/Task.js
-// Offline entity stub. Matches the Base44-style API your pages expect.
+// Offline entity stub. Matches the API your pages expect.
 
 const today = () => new Date().toISOString().slice(0, 10);
 

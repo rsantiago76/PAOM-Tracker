@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { client } from '@/api/amplifyClient';
+import { getCurrentUserProfile } from '@/lib/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -25,32 +26,60 @@ export default function SARPOAMExport() {
 
   const { data: findings = [] } = useQuery({
     queryKey: ['findings'],
-    queryFn: () => base44.entities.Finding.list(),
+    queryFn: async () => {
+      const { data } = await client.models.Finding.list();
+      return data.map(f => ({ ...f, system_id: f.systemId, created_date: f.createdAt }));
+    },
   });
 
   const { data: systems = [] } = useQuery({
     queryKey: ['systems'],
-    queryFn: () => base44.entities.System.list(),
+    queryFn: async () => {
+      const { data } = await client.models.System.list();
+      return data;
+    },
   });
 
   const { data: boundaries = [] } = useQuery({
     queryKey: ['boundaries'],
-    queryFn: () => base44.entities.Boundary.list(),
+    queryFn: async () => {
+      const { data } = await client.models.Boundary.list();
+      return data;
+    },
   });
 
   const { data: milestones = [] } = useQuery({
     queryKey: ['milestones'],
-    queryFn: () => base44.entities.Milestone.list(),
+    queryFn: async () => {
+      const { data } = await client.models.Milestone.list();
+      return data.map(m => ({
+        ...m,
+        due_date: m.dueDate,
+        finding_id: m.findingId,
+        owner_name: m.assignedTo, // Mapping assignedTo to owner_name if needed
+      }));
+    },
   });
 
   const { data: evidence = [] } = useQuery({
     queryKey: ['milestoneEvidence'],
-    queryFn: () => base44.entities.MilestoneEvidence.list(),
+    queryFn: async () => {
+      const { data } = await client.models.MilestoneEvidence.list();
+      return data.map(e => ({
+        ...e,
+        milestone_id: e.milestoneId,
+        uploaded_by_name: e.uploadedByName,
+        created_date: e.createdAt,
+        file_sha256: e.fileSha256,
+        file_size_bytes: e.fileSizeBytes,
+        file_name: e.fileName,
+      }));
+    },
   });
 
   const { data: currentUser } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentUserProfile(),
   });
 
   const filteredFindings = findings.filter(f => {
@@ -168,7 +197,7 @@ export default function SARPOAMExport() {
           yPos += 7;
           doc.text(`System: ${finding.system_name || 'N/A'}`, 20, yPos);
           yPos += 7;
-          
+
           const sys = systems.find(s => s.id === finding.system_id);
           doc.text(`Boundary: ${sys?.boundary || 'N/A'}`, 20, yPos);
           yPos += 7;
@@ -233,10 +262,10 @@ export default function SARPOAMExport() {
 
         filteredFindings.forEach((finding) => {
           const findingMilestones = milestones.filter(m => m.finding_id === finding.id);
-          
+
           findingMilestones.forEach((milestone) => {
             const milestoneEvidence = evidence.filter(e => e.milestone_id === milestone.id);
-            
+
             if (milestoneEvidence.length > 0) {
               if (yPos > 250) {
                 doc.addPage();

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { client } from '@/api/amplifyClient';
+import { getCurrentUserProfile } from '@/lib/auth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,16 +13,33 @@ export default function CommentsTab({ findingId }) {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
+    getCurrentUserProfile().then(setUser).catch(() => { });
   }, []);
 
   const { data: comments = [] } = useQuery({
     queryKey: ['comments', findingId],
-    queryFn: () => base44.entities.Comment.filter({ finding_id: findingId }, '-created_date'),
+    queryFn: async () => {
+      const { data } = await client.models.Comment.list({
+        filter: { findingId: { eq: findingId } }
+      });
+      // Map snake_case for UI
+      return data.map(c => ({
+        ...c,
+        finding_id: c.findingId,
+        comment_text: c.content, // Map content to comment_text
+        created_date: c.createdAt,
+        author_name: c.authorName,
+        comment_type: 'Comment', // Schema missing type, default to Comment
+      })).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    },
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Comment.create(data),
+    mutationFn: (data) => client.models.Comment.create({
+      findingId: data.finding_id,
+      content: data.comment_text,
+      authorName: data.author_name,
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', findingId] });
       setCommentText('');
@@ -53,8 +71,8 @@ export default function CommentsTab({ findingId }) {
             rows={3}
             className="mb-3"
           />
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             size="sm"
             disabled={createMutation.isPending || !commentText.trim()}
           >

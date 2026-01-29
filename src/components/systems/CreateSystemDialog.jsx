@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { getCurrentUserProfile } from '@/lib/auth';
+import { client } from '@/api/amplifyClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,7 @@ import { useToast } from '@/components/ui/use-toast';
 export default function CreateSystemDialog({ open, onClose }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  
+
   const [formData, setFormData] = useState({
     name: '',
     acronym: '',
@@ -28,9 +29,10 @@ export default function CreateSystemDialog({ open, onClose }) {
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
-      const currentUser = await base44.auth.me();
-      return [{ id: currentUser.id, full_name: currentUser.full_name, email: currentUser.email }];
+      const currentUser = await getCurrentUserProfile();
+      return currentUser ? [{ id: currentUser.id, full_name: currentUser.full_name, email: currentUser.email }] : [];
     },
+    enabled: open,
   });
 
   // Role-based owners (always available)
@@ -42,7 +44,7 @@ export default function CreateSystemDialog({ open, onClose }) {
   ];
 
   const roleBasedOwnerIds = new Set(roleBasedOwners.map(o => o.id));
-  
+
   // Combine role-based owners with workspace users, excluding role-based IDs
   const combinedOwners = [
     ...roleBasedOwners,
@@ -64,11 +66,27 @@ export default function CreateSystemDialog({ open, onClose }) {
 
   const { data: boundaries = [] } = useQuery({
     queryKey: ['boundaries'],
-    queryFn: () => base44.entities.Boundary.list(),
+    queryFn: async () => {
+      const { data } = await client.models.Boundary.list();
+      return data;
+    },
+    enabled: open,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.System.create(data),
+    mutationFn: async (data) => {
+      const payload = {
+        name: data.name,
+        acronym: data.acronym,
+        environment: data.environment,
+        boundary: data.boundary,
+        ownerUserId: data.owner_user_id,
+        ownerName: data.owner_name,
+        description: data.description,
+        activeStatus: data.active_status,
+      };
+      return client.models.System.create(payload);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['systems'] });
       toast({
@@ -116,8 +134,8 @@ export default function CreateSystemDialog({ open, onClose }) {
 
   const handleOwnerChange = (userId) => {
     const owner = allOwners.find(o => o.id === userId);
-    setFormData({ 
-      ...formData, 
+    setFormData({
+      ...formData,
       owner_user_id: userId,
       owner_name: owner ? (owner.name || owner.full_name) : ''
     });
@@ -243,8 +261,8 @@ export default function CreateSystemDialog({ open, onClose }) {
             <Button type="button" variant="outline" onClick={onClose} className="border-slate-700 text-slate-200">
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="bg-blue-600 hover:bg-blue-700"
               disabled={createMutation.isPending}
             >

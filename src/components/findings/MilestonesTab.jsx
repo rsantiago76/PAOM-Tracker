@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { client } from '@/api/amplifyClient';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,21 +21,39 @@ export default function MilestonesTab({ findingId, findingNumber }) {
 
   const { data: milestones = [] } = useQuery({
     queryKey: ['milestones', findingId],
-    queryFn: () => base44.entities.Milestone.filter({ finding_id: findingId }, 'sequence_number'),
+    queryFn: async () => {
+      const { data } = await client.models.Milestone.list({
+        filter: { findingId: { eq: findingId } }
+      });
+      // Map to snake_case for UI compatibility
+      return data.map(m => ({
+        ...m,
+        finding_id: m.findingId,
+        finding_number: m.findingNumber, // if exists
+        sequence_number: 0,
+        completion_date: m.completedAt, // UI expects snake_case
+        due_date: m.dueDate,
+      })).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    },
   });
 
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: async () => {
+      const { data } = await client.models.User.list();
+      // Map fullName to full_name for UI
+      return data.map(u => ({ ...u, full_name: u.fullName }));
+    },
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Milestone.create({
-      ...data,
-      finding_id: findingId,
-      finding_number: findingNumber,
-      status: 'Not Started',
-      sequence_number: milestones.length + 1,
+    mutationFn: (data) => client.models.Milestone.create({
+      title: data.title,
+      description: data.description,
+      dueDate: data.due_date,
+      assignedTo: data.assigned_to, // Assuming assignedTo uses email/id as string
+      findingId: findingId,
+      status: 'NOT_STARTED',
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['milestones', findingId] });
@@ -46,11 +64,28 @@ export default function MilestonesTab({ findingId, findingNumber }) {
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }) => {
-      const updateData = { status };
-      if (status === 'Complete') {
-        updateData.completion_date = new Date().toISOString().split('T')[0];
+      const updateData = { id, status };
+      // Map status strings if needed. UI uses 'In Progress' / 'Complete'
+      // Schema likely uses CONSTANT_CASE e.g. IN_PROGRESS, COMPLETED
+      // But let's assume UI values are used or we need to map.
+      // The previous list code used 'IN_PROGRESS' in UI. 
+      // This file uses 'In Progress'. I should standardize.
+      // Schema defined Enums are usually uppercase.
+      // 'Not Started' -> 'NOT_STARTED'
+      // 'In Progress' -> 'IN_PROGRESS'
+      // 'Complete' -> 'COMPLETED'
+      let statusEnum = status;
+      if (status === 'Not Started') statusEnum = 'NOT_STARTED';
+      if (status === 'In Progress') statusEnum = 'IN_PROGRESS';
+      if (status === 'Complete') statusEnum = 'COMPLETED';
+      if (status === 'Blocked') statusEnum = 'BLOCKED';
+
+      updateData.status = statusEnum;
+
+      if (statusEnum === 'COMPLETED') {
+        updateData.completedAt = new Date().toISOString().split('T')[0]; // or full ISO
       }
-      return base44.entities.Milestone.update(id, updateData);
+      return client.models.Milestone.update(updateData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['milestones', findingId] });
@@ -58,7 +93,7 @@ export default function MilestonesTab({ findingId, findingNumber }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Milestone.delete(id),
+    mutationFn: (id) => client.models.Milestone.delete({ id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['milestones', findingId] });
     },
@@ -176,7 +211,7 @@ export default function MilestonesTab({ findingId, findingNumber }) {
                       <X className="w-4 h-4" />
                     </Button>
                   </div>
-                  
+
                   <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
                     <Badge className={getStatusColor(milestone.status)}>
                       {milestone.status}

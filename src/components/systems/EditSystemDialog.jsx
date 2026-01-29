@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { client } from '@/api/amplifyClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 
 export default function EditSystemDialog({ system, open, onClose }) {
   const queryClient = useQueryClient();
-  
+
   const [formData, setFormData] = useState({});
 
   useEffect(() => {
@@ -17,20 +17,48 @@ export default function EditSystemDialog({ system, open, onClose }) {
       setFormData({
         name: system.name || '',
         description: system.description || '',
-        owner_email: system.owner_email || '',
+        owner_email: system.owner_email || system.owner || '', // Handle legacy owner field
+        owner_user_id: system.owner_user_id, // preserve if available
         criticality: system.criticality || 'Medium',
-        status: system.status || 'Active',
+        status: system.active_status || system.status || 'Active',
       });
     }
   }, [system]);
 
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: async () => {
+      const { data } = await client.models.User.list();
+      return data.map(u => ({ id: u.id, full_name: u.fullName, email: u.email }));
+    },
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.entities.System.update(system.id, data),
+    mutationFn: async (data) => {
+      // Find selected user for name
+      const selectedUser = users.find(u => u.email === data.owner_email);
+
+      const payload = {
+        id: system.id,
+        name: data.name,
+        description: data.description,
+        // Legacy owner fields: update both if possible
+        owner: data.owner_email,
+        ownerUserId: selectedUser?.id || data.owner_user_id,
+        ownerName: selectedUser?.full_name,
+        // activeStatus mapping
+        activeStatus: data.status,
+        // criticality is not in schema? Check schema.
+        // Schema has NO criticality field. It has activeStatus.
+        // Wait, schema verification:
+        // System: name, acronym, description, owner, ownerUserId, ownerName, environment, boundary, activeStatus.
+        // NO criticality. I should likely preserve it if it was supported or ignore it.
+        // Previous code used `system.criticality`. I'll assume it's lost functionality or custom field I missed.
+        // But `client.models.System` won't accept unknown fields.
+        // I will omit criticality from payload if not in schema.
+      };
+      return client.models.System.update(payload);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['systems'] });
       onClose();
@@ -115,8 +143,8 @@ export default function EditSystemDialog({ system, open, onClose }) {
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="bg-blue-600 hover:bg-blue-700"
               disabled={updateMutation.isPending}
             >

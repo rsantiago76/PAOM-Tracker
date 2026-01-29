@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { client } from '@/api/amplifyClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ export default function SystemCard({ system, findings }) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const deleteMutation = useMutation({
-    mutationFn: () => base44.entities.System.delete(system.id),
+    mutationFn: () => client.models.System.delete({ id: system.id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['systems'] });
     },

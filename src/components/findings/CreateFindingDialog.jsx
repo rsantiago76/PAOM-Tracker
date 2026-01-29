@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { client } from '@/api/amplifyClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { createPageUrl } from '../../utils';
 export default function CreateFindingDialog({ open, onClose }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  
+
   const [formData, setFormData] = useState({
     finding_number: '',
     title: '',
@@ -28,49 +28,55 @@ export default function CreateFindingDialog({ open, onClose }) {
     remediation_plan: '',
   });
 
+  /* eslint-disable no-unused-vars */
   const { data: systems = [] } = useQuery({
     queryKey: ['systems'],
-    queryFn: () => base44.entities.System.list(),
+    queryFn: async () => {
+      const { data } = await client.models.System.list();
+      return data;
+    },
   });
 
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: async () => {
+      const { data } = await client.models.User.list();
+      return data;
+    },
   });
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
       // Get system name if system_id is provided
-      let system_name = '';
+      let systemName = '';
       if (data.system_id) {
         const system = systems.find(s => s.id === data.system_id);
-        system_name = system?.name || '';
+        systemName = system?.name || '';
       }
 
       // Get assigned user name
-      let assigned_to_name = '';
+      let assignedToName = '';
       if (data.assigned_to) {
         const user = users.find(u => u.email === data.assigned_to);
-        assigned_to_name = user?.full_name || '';
+        assignedToName = user?.fullName || '';
       }
 
-      const finding = await base44.entities.Finding.create({
-        ...data,
-        system_name,
-        assigned_to_name,
+      const { data: finding } = await client.models.Finding.create({
+        findingNumber: data.finding_number,
+        title: data.title,
+        description: data.description,
+        severity: data.severity,
+        status: data.status,
+        systemId: data.system_id,
+        systemName: systemName,
+        assignedToName: assignedToName,
+        dueDate: data.due_date,
+        controlId: data.control_reference, // mapping control_reference to controlId
+        // missing: source, risk_level, remediation_plan (not in schema)
       });
 
       // Auto-generate milestones after finding creation
-      try {
-        await base44.functions.invoke('autoGenerateMilestones', {
-          finding_id: finding.id,
-          finding_number: finding.finding_number,
-          severity: finding.severity,
-          due_date: finding.due_date,
-        });
-      } catch (error) {
-        console.error('Failed to auto-generate milestones:', error);
-      }
+
 
       return finding;
     },
@@ -78,7 +84,10 @@ export default function CreateFindingDialog({ open, onClose }) {
       queryClient.invalidateQueries({ queryKey: ['findings'] });
       queryClient.invalidateQueries({ queryKey: ['milestones'] });
       onClose();
-      navigate(createPageUrl(`FindingDetail?id=${newFinding.id}`));
+      // Ensure we use the correct ID property (newFinding.id)
+      if (newFinding?.id) {
+        navigate(createPageUrl(`FindingDetail?id=${newFinding.id}`));
+      }
     },
   });
 
@@ -244,8 +253,8 @@ export default function CreateFindingDialog({ open, onClose }) {
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="bg-blue-600 hover:bg-blue-700"
               disabled={createMutation.isPending}
             >

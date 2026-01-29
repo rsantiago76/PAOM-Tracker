@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { client } from '@/api/amplifyClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { 
-  Upload, Eye, Download, CheckCircle, AlertTriangle, 
+import {
+  Upload, Eye, Download, CheckCircle, AlertTriangle,
   Edit, Trash2, RefreshCw, Calendar, User, Hash, FileText
 } from 'lucide-react';
 
@@ -38,14 +38,25 @@ export default function ChainOfCustodyViewer({ evidenceId, findingId, compact = 
   const { data: custodyLogs = [], isLoading } = useQuery({
     queryKey: ['evidenceChainOfCustody', evidenceId],
     queryFn: async () => {
-      const logs = await base44.entities.EvidenceChainOfCustody.filter({ evidence_id: evidenceId });
-      return logs.sort((a, b) => new Date(b.action_at) - new Date(a.action_at));
+      // Use list with filter if supported or filter client side. Schema has evidenceId field.
+      const { data } = await client.models.EvidenceChainOfCustody.list();
+      return data
+        .filter(log => log.evidenceId === evidenceId)
+        .map(log => ({
+          ...log,
+          action_at: log.actionAt,
+          actor_name: log.actorName,
+          actor_role: log.actorRole,
+          hash_snapshot_sha256: log.hashSnapshotSha256,
+          // other fields map 1:1 or as needed
+        }))
+        .sort((a, b) => new Date(b.action_at) - new Date(a.action_at));
     },
     enabled: !!evidenceId,
   });
 
   const filteredLogs = custodyLogs.filter(log => {
-    const matchesSearch = 
+    const matchesSearch =
       log.actor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.notes?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesAction = actionFilter === 'all' || log.action === actionFilter;
@@ -71,7 +82,7 @@ export default function ChainOfCustodyViewer({ evidenceId, findingId, compact = 
           <FileText className="w-5 h-5" />
           Chain of Custody
         </CardTitle>
-        
+
         {custodyLogs.length > 5 && (
           <div className="mt-3 flex gap-3">
             <Input
@@ -109,13 +120,12 @@ export default function ChainOfCustodyViewer({ evidenceId, findingId, compact = 
             {filteredLogs.map((log) => {
               const Icon = actionIcons[log.action] || FileText;
               const isAlert = log.action === 'HASH_MISMATCH_DETECTED' || log.action === 'DELETED';
-              
+
               return (
                 <div
                   key={log.id}
-                  className={`bg-slate-800/40 rounded-lg p-4 border ${
-                    isAlert ? 'border-red-700/60' : 'border-slate-700/60'
-                  }`}
+                  className={`bg-slate-800/40 rounded-lg p-4 border ${isAlert ? 'border-red-700/60' : 'border-slate-700/60'
+                    }`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">

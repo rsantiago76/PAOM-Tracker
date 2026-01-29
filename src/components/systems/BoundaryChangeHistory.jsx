@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { client } from '@/api/amplifyClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
@@ -9,8 +9,23 @@ import { ArrowRight, AlertCircle, Edit2 } from 'lucide-react';
 export default function BoundaryChangeHistory({ systemId }) {
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ['boundaryChangeLogs', systemId],
-    queryFn: () => {
-      return base44.entities.BoundaryChangeLog.filter({ system_id: systemId }, '-created_date');
+    queryFn: async () => {
+      // Fetch all logs and filter by systemId (client-side since no specific GSI is confirmed yet, or to keep it simple)
+      const { data } = await client.models.BoundaryChangeLog.list();
+      return data
+        .filter(log => log.systemId === systemId)
+        .map(log => ({
+          ...log,
+          system_id: log.systemId,
+          changed_by_name: log.changedByName,
+          created_date: log.createdAt,
+          change_source: log.changeSource,
+          from_boundary: log.fromBoundary,
+          to_boundary: log.toBoundary,
+          findings_impacted_count: log.findingsImpactedCount,
+          system_environment: log.systemEnvironment || 'Unknown', // mapped from schema
+        }))
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     },
   });
 

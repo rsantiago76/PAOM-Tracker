@@ -1,5 +1,5 @@
 // src/integrations/Core.js
-// Offline stub so Amplify can build without Base44 backend.
+// Offline stub so Amplify can build.
 
 export async function InvokeLLM({ prompt, response_json_schema } = {}) {
   // Return a predictable shape that AIAllocation.jsx expects:

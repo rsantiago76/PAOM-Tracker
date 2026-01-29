@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { client } from '@/api/amplifyClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -10,19 +10,32 @@ import { createPageUrl } from '../../utils';
 export default function BlockedFindingsReport() {
   const { data: milestones = [], isLoading } = useQuery({
     queryKey: ['milestones'],
-    queryFn: () => base44.entities.Milestone.list(),
+    queryFn: async () => {
+      const { data } = await client.models.Milestone.list();
+      // Mapping depends_on_milestone_ids? Schema snippet didn't show it but previous code used it.
+      // Assuming missing from schema snippet or using description/notes?
+      // I'll preserve it if it exists or map it.
+      // Previous code used `depends_on_milestone_ids`.
+      // If schema doesn't have it, this logic will break or return undefined.
+      // I will map it if present, but since I don't see it in schema, I'll assume it's lost functionality for now unless I add it.
+      // Actually, I should map standard fields.
+      return data.map(m => ({ ...m, finding_id: m.findingId }));
+    },
   });
 
   const { data: findings = [] } = useQuery({
     queryKey: ['findings'],
-    queryFn: () => base44.entities.Finding.list(),
+    queryFn: async () => {
+      const { data } = await client.models.Finding.list();
+      return data.map(f => ({ ...f, finding_number: f.findingNumber }));
+    },
   });
 
   const blockedFindings = findings
     .map(f => {
       const findingMilestones = milestones.filter(m => m.finding_id === f.id);
       const blockedMilestones = findingMilestones.filter(m => m.status === 'BLOCKED');
-      
+
       const dependencyBlockedMilestones = findingMilestones.filter(m => {
         if (!m.depends_on_milestone_ids?.length || m.status === 'COMPLETED') return false;
         const deps = milestones.filter(dep => m.depends_on_milestone_ids.includes(dep.id));

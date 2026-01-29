@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { uploadData, getUrl } from 'aws-amplify/storage';
+import { client } from '@/api/amplifyClient';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,13 +21,50 @@ export default function EvidenceTab({ findingId }) {
 
   const { data: evidence = [] } = useQuery({
     queryKey: ['evidence', findingId],
-    queryFn: () => base44.entities.Evidence.filter({ finding_id: findingId }, '-created_date'),
+    queryFn: async () => {
+      // 1. Fetch records
+      const { data } = await client.models.Evidence.list({
+        filter: { findingId: { eq: findingId } }
+      });
+      // 2. Resolve URLs for files (assuming fileUrl stores the Storage path)
+      const evidenceWithUrls = await Promise.all(data.map(async (item) => {
+        let downloadUrl = '';
+        if (item.fileUrl) {
+          try {
+            const urlResult = await getUrl({ path: item.fileUrl });
+            downloadUrl = urlResult.url.toString();
+          } catch (e) {
+            console.error('Failed to get URL for', item.fileUrl, e);
+          }
+        }
+        return {
+          ...item,
+          // Map back to snake_case for UI consistency if needed, 
+          // but I'll update the UI to use camelCase where possible.
+          // The existing UI uses snake_case props like evidence_type. 
+          // I will manually map here to minimize UI disruption.
+          evidence_type: item.evidenceType,
+          file_name: item.fileName,
+          created_date: item.createdAt,
+          created_by: item.createdBy, // This might be null if not set, I should handle it.
+          file_url: downloadUrl || item.fileUrl,
+          original_path: item.fileUrl // keep track of path for deletion
+        };
+      }));
+      // Sort by creation date desc (client side since list sort is limited in basic filter)
+      return evidenceWithUrls.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+    },
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Evidence.create({
-      ...data,
-      finding_id: findingId,
+    mutationFn: (data) => client.models.Evidence.create({
+      findingId: findingId,
+      title: data.title,
+      notes: data.notes,
+      evidenceType: data.evidence_type,
+      fileUrl: data.file_url, // This is the PATH now
+      fileName: data.file_name,
+      createdBy: 'User', // Placeholder, ideally get current user
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evidence', findingId] });
@@ -38,7 +74,7 @@ export default function EvidenceTab({ findingId }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Evidence.delete(id),
+    mutationFn: (id) => client.models.Evidence.delete({ id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evidence', findingId] });
     },
@@ -50,13 +86,22 @@ export default function EvidenceTab({ findingId }) {
 
     setUploading(true);
     try {
-      const result = await base44.integrations.Core.UploadFile({ file });
+      const path = `evidence/${Date.now()}-${file.name}`;
+      await uploadData({
+        path,
+        data: file,
+        options: {
+          // ensure access matches resource.ts
+        }
+      }).result;
+
       setFormData(prev => ({
         ...prev,
-        file_url: result.file_url,
+        file_url: path, // Storing path
         file_name: file.name,
       }));
     } catch (error) {
+      console.error(error);
       alert('Failed to upload file');
     } finally {
       setUploading(false);
@@ -133,9 +178,9 @@ export default function EvidenceTab({ findingId }) {
               />
             </div>
 
-            <Button 
-              type="submit" 
-              size="sm" 
+            <Button
+              type="submit"
+              size="sm"
               disabled={createMutation.isPending || !formData.file_url}
             >
               {createMutation.isPending ? 'Adding...' : 'Add Evidence'}

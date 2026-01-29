@@ -1,11 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from './utils';
-import { base44 } from '@/api/base44Client';
-import { 
-  LayoutDashboard, 
-  AlertTriangle, 
-  Server, 
+import { getCurrentUserProfile, signOut } from '@/lib/auth';
+import {
+  LayoutDashboard,
+  AlertTriangle,
+  Server,
   FileText,
   LogOut,
   Menu,
@@ -19,7 +19,7 @@ export default function Layout({ children, currentPageName }) {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   React.useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
+    getCurrentUserProfile().then(setUser).catch(() => { });
   }, []);
 
   const navigation = [
@@ -30,8 +30,9 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Reports', icon: FileText, page: 'Reports' },
   ];
 
-  const handleLogout = () => {
-    base44.auth.logout();
+  const handleLogout = async () => {
+    await signOut();
+    window.location.reload(); // Simple reload to reset state/redirect
   };
 
   return (
@@ -54,11 +55,10 @@ export default function Layout({ children, currentPageName }) {
                   <Link
                     key={item.page}
                     to={createPageUrl(item.page)}
-                    className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive
+                    className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
                         ? 'bg-slate-800 text-white'
                         : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                    }`}
+                      }`}
                   >
                     <Icon className="w-4 h-4 mr-2" />
                     {item.name}
@@ -109,11 +109,10 @@ export default function Layout({ children, currentPageName }) {
                     key={item.page}
                     to={createPageUrl(item.page)}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center px-3 py-2 rounded-lg text-base font-medium ${
-                      isActive
+                    className={`flex items-center px-3 py-2 rounded-lg text-base font-medium ${isActive
                         ? 'bg-slate-800 text-white'
                         : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                    }`}
+                      }`}
                   >
                     <Icon className="w-5 h-5 mr-3" />
                     {item.name}
