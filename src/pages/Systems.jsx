@@ -5,12 +5,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Plus, Server, Search, Filter, Archive, Trash2 } from 'lucide-react';
+import { Plus, Server, Search, Filter, Archive, Trash2, Database } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import CreateSystemDialog from '../components/systems/CreateSystemDialog';
 import BoundaryBadge from '../components/boundaries/BoundaryBadge';
 import BoundaryChangeWarningBanner from '../components/boundaries/BoundaryChangeWarningBanner';
+import { seedDatabase } from '@/lib/seeder';
 import {
   Dialog,
   DialogContent,
@@ -30,12 +31,17 @@ import { useToast } from '@/components/ui/use-toast';
 export default function Systems() {
   const [searchTerm, setSearchTerm] = useState('');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
   const [filters, setFilters] = useState({
     boundary: 'all',
     environment: 'all',
     owner: 'all',
     active: 'Active',
   });
+  // ... (skipping unchanged state lines 39-49 for brevity of match, need to match exactly or use ReplaceChunk carefully)
+  // Actually, to avoid context matching issues with state, I will target the imports and the specific header section separately or assume I can match a larger block.
+  // Let's use multi_replace for safety.
+
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedSystem, setSelectedSystem] = useState(null);
@@ -624,6 +630,30 @@ export default function Systems() {
     }
   };
 
+  const handleSeed = async () => {
+    setIsSeeding(true);
+    try {
+      toast({ title: 'Starting database seed...', description: 'This may take a few seconds.' });
+      const result = await seedDatabase();
+      if (result.success) {
+        toast({ title: 'Seed Complete', description: 'Systems and boundaries have been populated.' });
+        queryClient.invalidateQueries({ queryKey: ['systems'] });
+        queryClient.invalidateQueries({ queryKey: ['boundaries'] });
+        queryClient.invalidateQueries({ queryKey: ['findings'] });
+      } else {
+        toast({
+          title: 'Seed Failed',
+          description: result.error?.message || 'Check console for details',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Unexpected error during seeding', variant: 'destructive' });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   return (
     <>
       <style>{`
@@ -677,10 +707,20 @@ export default function Systems() {
               <h1 className="text-3xl font-bold text-slate-100">Systems</h1>
               <p className="text-slate-300 mt-1">Manage systems and applications</p>
             </div>
-            <Button onClick={() => setCreateDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="w-4 h-4 mr-2" />
-              Add System
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                onClick={handleSeed}
+                disabled={isSeeding}
+                className="bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600"
+              >
+                <Database className={`w-4 h-4 mr-2 ${isSeeding ? 'animate-pulse' : ''}`} />
+                {isSeeding ? 'Seeding...' : 'Seed Data'}
+              </Button>
+              <Button onClick={() => setCreateDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Add System
+              </Button>
+            </div>
           </div>
 
           <Card className="bg-slate-900/45 border border-slate-700/60 backdrop-blur shadow-md">
