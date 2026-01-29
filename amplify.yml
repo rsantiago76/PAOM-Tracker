@@ -18,3 +18,7 @@ frontend:
     paths:
       - .npm/**/*
       - node_modules/**/*
+customRules:
+  - source: /<*>
+    target: /index.html
+    status: 200
