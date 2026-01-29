@@ -135,6 +135,10 @@ const schema = a.schema({
       openFindingsImpacted: a.integer(),
       changeSource: a.string(),
       status: a.string(),
+      approvedByUserId: a.string(),
+      approvedByName: a.string(),
+      approvalDecisionDate: a.datetime(),
+      approvalNotes: a.string(),
       createdAt: a.datetime(),
       updatedAt: a.datetime(),
     })
