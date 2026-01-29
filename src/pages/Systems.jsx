@@ -349,13 +349,13 @@ export default function Systems() {
   const canUserDeleteSystem = (userRole, totalFindingsCount) => {
     // If findings are still loading, block delete (safe default)
     if (totalFindingsCount === null) return false;
-    return userRole === 'admin' && totalFindingsCount === 0;
+    return (userRole === 'admin' || userRole === 'ADMIN') && totalFindingsCount === 0;
   };
 
   const getDeleteDisabledReason = (userRole, totalFindingsCount) => {
     // If findings are loading, show loading state
     if (totalFindingsCount === null) return 'LOADING';
-    if (userRole !== 'admin') return 'INSUFFICIENT_PERMISSIONS';
+    if (userRole !== 'admin' && userRole !== 'ADMIN') return 'INSUFFICIENT_PERMISSIONS';
     if (totalFindingsCount > 0) return 'HAS_FINDINGS';
     return null;
   };
@@ -369,7 +369,7 @@ export default function Systems() {
   const handleDelete = (system, e) => {
     e.stopPropagation();
 
-    const isAdmin = currentUser?.role === 'admin';
+    const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'ADMIN';
     if (!isAdmin) {
       toast({
         title: 'Permission denied',
@@ -407,7 +407,7 @@ export default function Systems() {
 
   const handleEnvironmentChange = (system, newEnvironment, e) => {
     e.stopPropagation();
-    if (currentUser?.role !== 'admin') {
+    if (currentUser?.role !== 'admin' && currentUser?.role !== 'ADMIN') {
       toast({
         title: 'Permission denied',
         description: 'Only workspace admins can change system environment.',
@@ -447,9 +447,9 @@ export default function Systems() {
     });
   };
 
-  const canEditBoundary = currentUser?.role === 'admin';
-  const isComplianceLead = currentUser?.role === 'admin' && currentUser?.compliance_lead === true;
-  const isWorkspaceAdmin = currentUser?.role === 'admin';
+  const canEditBoundary = currentUser?.role === 'admin' || currentUser?.role === 'ADMIN';
+  const isComplianceLead = (currentUser?.role === 'admin' || currentUser?.role === 'ADMIN') && currentUser?.compliance_lead === true;
+  const isWorkspaceAdmin = currentUser?.role === 'admin' || currentUser?.role === 'ADMIN';
 
   const checkExternalToProdApproval = (fromBoundary, toBoundary) => {
     const fromBoundaryObj = boundaries.find(b => b.name === fromBoundary);
