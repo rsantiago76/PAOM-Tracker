@@ -31,6 +31,7 @@ const schema = a.schema({
     .model({
       systemId: a.string().required(),
       systemName: a.string(), // De-normalization
+      boundary: a.string(), // De-normalization
 
       // POAM Fields
       findingNumber: a.string(),
@@ -126,6 +127,13 @@ const schema = a.schema({
       requestedByUserId: a.string(),
       requestedByName: a.string(),
       systemId: a.string(),
+      systemIds: a.string().array(),
+      fromBoundary: a.string(),
+      toBoundary: a.string(),
+      reason: a.string(),
+      totalFindingsImpacted: a.integer(),
+      openFindingsImpacted: a.integer(),
+      changeSource: a.string(),
       status: a.string(),
       createdAt: a.datetime(),
       updatedAt: a.datetime(),
@@ -135,7 +143,14 @@ const schema = a.schema({
   BoundaryChangeLog: a
     .model({
       systemId: a.string(),
+      systemName: a.string(),
       changedByUserId: a.string(),
+      changedByName: a.string(),
+      fromBoundary: a.string(),
+      toBoundary: a.string(),
+      systemEnvironment: a.string(),
+      findingsImpactedCount: a.integer(),
+      changeSource: a.string(),
       notes: a.string(),
       createdAt: a.datetime(),
       updatedAt: a.datetime(),
