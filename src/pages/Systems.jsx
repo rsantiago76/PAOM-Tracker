@@ -706,6 +706,10 @@ export default function Systems() {
             <div>
               <h1 className="text-3xl font-bold text-slate-100">Systems</h1>
               <p className="text-slate-300 mt-1">Manage systems and applications</p>
+              {/* Debug Info */}
+              <p className="text-xs text-slate-500 font-mono mt-1">
+                Role: {currentUser?.role || 'Loading...'} | Email: {currentUser?.email}
+              </p>
             </div>
             <div className="flex gap-3">
               <Button

@@ -8,7 +8,7 @@ export default function Approvals() {
     queryFn: () => getCurrentUserProfile(),
   });
 
-  const isComplianceLead = currentUser?.role === 'admin';
+  const isComplianceLead = currentUser?.role === 'ADMIN' || currentUser?.role === 'admin';
 
   if (!isComplianceLead) {
     return (
