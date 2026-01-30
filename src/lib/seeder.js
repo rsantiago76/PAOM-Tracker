@@ -298,3 +298,4 @@ export async function seedDatabase(currentUserEmail = null) {
         log(`Seeding failed: ${err.message}`);
         return { success: false, logs, error: err };
     }
+}
