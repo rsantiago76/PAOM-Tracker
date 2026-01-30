@@ -634,7 +634,7 @@ export default function Systems() {
     setIsSeeding(true);
     try {
       toast({ title: 'Starting database seed...', description: 'This may take a few seconds.' });
-      const result = await seedDatabase();
+      const result = await seedDatabase(currentUser?.email);
       if (result.success) {
         toast({ title: 'Seed Complete', description: 'Systems and boundaries have been populated.' });
         queryClient.invalidateQueries({ queryKey: ['systems'] });

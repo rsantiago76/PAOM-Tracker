@@ -171,7 +171,7 @@ function calculateDueDate(severity) {
     return date.toISOString();
 }
 
-export async function seedDatabase() {
+export async function seedDatabase(currentUserEmail = null) {
     console.log("Starting frontend database seed...");
     let logs = [];
     const log = (msg) => {
@@ -180,102 +180,123 @@ export async function seedDatabase() {
     };
 
     try {
-        // 1. Seed Boundaries
-        const { data: existingBoundaries } = await client.models.Boundary.list();
-        const existingBoundaryNames = new Set(existingBoundaries.map(b => b.name));
+        // ... (existing seeding logic) ...
+        // I need to be careful with range replacement.
+        // It's safer to just update the signature and the Admin promotion block.
+        // But the previous content has the whole function start.
+        // I'll target the signature line first, then the admin promotion block.
+        // Wait, replace_file_content is single contiguous block.
+        // seeder.js is ~280 lines.
+        // I will use multi_replace for safety if needed, or just replace the specific chunks.
+        // Actually, the previous tool output for seeder.js shows lines 174 is signature.
+        // And lines 247 is the admin block.
+        // They are far apart. Using multi_replace.
 
-        for (const bData of boundariesData) {
-            if (existingBoundaryNames.has(bData.name)) {
-                log(`Skipping Boundary (exists): ${bData.name}`);
-                continue;
-            }
-            const { errors } = await client.models.Boundary.create({
-                name: bData.name,
-                boundaryCategory: bData.category,
-                description: bData.description
-            });
-            if (errors) log(`Error creating boundary ${bData.name}: ${JSON.stringify(errors)}`);
-            else log(`Created Boundary: ${bData.name}`);
-        }
 
-        // 2. Seed Systems
-        const { data: existingSystems } = await client.models.System.list();
-        const existingSystemNames = new Set(existingSystems.map(s => s.name));
-
-        for (const sysData of systemsData) {
-            if (existingSystemNames.has(sysData.name)) {
-                log(`Skipping System (exists): ${sysData.name}`);
-                continue;
-            }
-
-            const { data: system, errors } = await client.models.System.create({
-                name: sysData.name,
-                acronym: sysData.acronym,
-                description: sysData.description,
-                environment: sysData.environment,
-                ownerName: sysData.owner,
-                boundary: sysData.boundary,
-                activeStatus: sysData.activeStatus
-            });
-
-            if (errors) {
-                log(`Error creating system ${sysData.acronym}: ${JSON.stringify(errors)}`);
-                continue;
-            }
-            log(`Created System: ${system.name}`);
-
-            // 3. Seed Findings
-            for (const f of sysData.findings) {
-                await client.models.Finding.create({
-                    systemId: system.id,
-                    systemName: system.name,
-                    title: f.title,
-                    description: `Generated finding for ${system.acronym}`,
-                    severity: f.severity,
-                    status: f.status,
-                    dueDate: calculateDueDate(f.severity),
-                    controlId: "AC-1",
-                    impact: "HIGH",
-                    likelihood: "MEDIUM",
-                    source: "MANUAL_REVIEW"
-                });
-                log(`  - Added Finding: ${f.title}`);
-            }
-        }
-
-        // 4. Promote Current User to ADMIN
         try {
-            const { getCurrentUser } = await import('aws-amplify/auth');
-            const authUser = await getCurrentUser();
-            const email = authUser.signInDetails?.loginId;
+            // 1. Seed Boundaries
+            const { data: existingBoundaries } = await client.models.Boundary.list();
+            const existingBoundaryNames = new Set(existingBoundaries.map(b => b.name));
 
-            if (email) {
-                const { data: users } = await client.models.User.list({
-                    filter: { email: { eq: email } }
+            for (const bData of boundariesData) {
+                if (existingBoundaryNames.has(bData.name)) {
+                    log(`Skipping Boundary (exists): ${bData.name}`);
+                    continue;
+                }
+                const { errors } = await client.models.Boundary.create({
+                    name: bData.name,
+                    boundaryCategory: bData.category,
+                    description: bData.description
+                });
+                if (errors) log(`Error creating boundary ${bData.name}: ${JSON.stringify(errors)}`);
+                else log(`Created Boundary: ${bData.name}`);
+            }
+
+            // 2. Seed Systems
+            const { data: existingSystems } = await client.models.System.list();
+            const existingSystemNames = new Set(existingSystems.map(s => s.name));
+
+            for (const sysData of systemsData) {
+                if (existingSystemNames.has(sysData.name)) {
+                    log(`Skipping System (exists): ${sysData.name}`);
+                    continue;
+                }
+
+                const { data: system, errors } = await client.models.System.create({
+                    name: sysData.name,
+                    acronym: sysData.acronym,
+                    description: sysData.description,
+                    environment: sysData.environment,
+                    ownerName: sysData.owner,
+                    boundary: sysData.boundary,
+                    activeStatus: sysData.activeStatus
                 });
 
-                if (users.length > 0) {
-                    await client.models.User.update({
-                        id: users[0].id,
-                        role: 'ADMIN'
+                if (errors) {
+                    log(`Error creating system ${sysData.acronym}: ${JSON.stringify(errors)}`);
+                    continue;
+                }
+                log(`Created System: ${system.name}`);
+
+                // 3. Seed Findings
+                for (const f of sysData.findings) {
+                    await client.models.Finding.create({
+                        systemId: system.id,
+                        systemName: system.name,
+                        title: f.title,
+                        description: `Generated finding for ${system.acronym}`,
+                        severity: f.severity,
+                        status: f.status,
+                        dueDate: calculateDueDate(f.severity),
+                        controlId: "AC-1",
+                        impact: "HIGH",
+                        likelihood: "MEDIUM",
+                        source: "MANUAL_REVIEW"
                     });
-                    log(`Promoted user ${email} to ADMIN`);
-                } else {
-                    await client.models.User.create({
-                        email: email,
-                        role: 'ADMIN',
-                        status: 'ACTIVE'
-                    });
-                    log(`Created ADMIN user for ${email}`);
+                    log(`  - Added Finding: ${f.title}`);
                 }
             }
-        } catch (authErr) {
-            log(`Skipping admin promotion: ${authErr.message}`);
-        }
 
-        return { success: true, logs };
-    } catch (err) {
-        log(`Seeding failed: ${err.message}`);
-        return { success: false, logs, error: err };
+            // 4. Promote Current User to ADMIN
+            try {
+                let email = currentUserEmail;
+                if (!email) {
+                    try {
+                        const { getCurrentUser } = await import('aws-amplify/auth');
+                        const authUser = await getCurrentUser();
+                        email = authUser.signInDetails?.loginId;
+                    } catch (e) {
+                        log("Could not auto-detect user for admin promotion (no email passed).");
+                    }
+                }
+
+                if (email) {
+                    const { data: users } = await client.models.User.list({
+                        filter: { email: { eq: email } }
+                    });
+
+                    if (users.length > 0) {
+                        await client.models.User.update({
+                            id: users[0].id,
+                            role: 'ADMIN'
+                        });
+                        log(`Promoted user ${email} to ADMIN`);
+                    } else {
+                        await client.models.User.create({
+                            email: email,
+                            role: 'ADMIN',
+                            status: 'ACTIVE'
+                        });
+                        log(`Created ADMIN user for ${email}`);
+                    }
+                }
+            } catch (authErr) {
+                log(`Skipping admin promotion: ${authErr.message}`);
+            }
+
+            return { success: true, logs };
+        } catch (err) {
+            log(`Seeding failed: ${err.message}`);
+            return { success: false, logs, error: err };
+        }
     }
-}
