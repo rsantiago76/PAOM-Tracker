@@ -12,6 +12,7 @@ import CreateSystemDialog from '../components/systems/CreateSystemDialog';
 import BoundaryBadge from '../components/boundaries/BoundaryBadge';
 import BoundaryChangeWarningBanner from '../components/boundaries/BoundaryChangeWarningBanner';
 import { seedDatabase } from '@/lib/seeder';
+import { getCurrentUserProfile } from '@/lib/auth';
 import {
   Dialog,
   DialogContent,
@@ -109,14 +110,10 @@ export default function Systems() {
   // Use getCurrentUserProfile helper
   const [currentUser, setCurrentUser] = useState(null);
   React.useEffect(() => {
-    // We can also use useAuth() hook if I exported it properly from context,
-    // but here I'll just use the helper or assume it's passed or fetched similarly.
-    // Ideally use useAuth() from context. Assuming AuthContext is available.
-    // For now, reuse the helper to keep it local if simple.
-    // Actually, let's use the pattern from other files or just the helper.
-    // Using helper is safe.
-    // But currentUser is used in render, so state is needed.
-    import('@/lib/auth').then(m => m.getCurrentUserProfile().then(setCurrentUser));
+    getCurrentUserProfile().then(user => {
+      console.debug('Loaded User:', user);
+      setCurrentUser(user);
+    });
   }, []);
 
 
@@ -631,6 +628,14 @@ export default function Systems() {
   };
 
   const handleSeed = async () => {
+    if (!currentUser?.email) {
+      toast({
+        title: 'Error',
+        description: 'User email not found. Please wait a moment or sign in again.',
+        variant: 'destructive'
+      });
+      return;
+    }
     setIsSeeding(true);
     try {
       toast({ title: 'Starting database seed...', description: 'This may take a few seconds.' });
