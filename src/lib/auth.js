@@ -5,6 +5,18 @@ export { signOut };
 
 export async function getCurrentUserProfile() {
     try {
+        // Check for Demo Mode
+        const isDemoMode = localStorage.getItem('poam_demo_mode') === 'true';
+        if (isDemoMode) {
+            return {
+                id: 'demo-user-id',
+                email: 'demo@example.com',
+                full_name: 'Demo Admin',
+                role: 'ADMIN',
+                compliance_lead: true
+            };
+        }
+
         const authUser = await getCurrentUser();
 
         let email = authUser.signInDetails?.loginId;

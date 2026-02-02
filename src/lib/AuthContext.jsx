@@ -33,22 +33,6 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoadingAuth(true);
 
-      // Check for Demo Mode
-      const isDemoMode = localStorage.getItem('poam_demo_mode') === 'true';
-      if (isDemoMode) {
-        const demoUser = {
-          id: 'demo-user-id',
-          email: 'demo@example.com',
-          full_name: 'Demo Admin',
-          role: 'ADMIN',
-          compliance_lead: true
-        };
-        setUser(demoUser);
-        setIsAuthenticated(true);
-        setIsLoadingAuth(false);
-        return;
-      }
-
       const currentUser = await getCurrentUserProfile();
       if (currentUser) {
         setUser(currentUser);
