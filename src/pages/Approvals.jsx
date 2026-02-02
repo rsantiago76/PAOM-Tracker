@@ -49,16 +49,28 @@ export default function Approvals() {
       }
     };
 
+    const isLoggedIn = currentUser && currentUser.email;
+
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-6">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-slate-800">Access Denied</h2>
-          <p className="text-slate-500 mt-2">You don't have permission to view the Approvals page.</p>
+          <h2 className="text-xl font-semibold text-slate-800">
+            {!isLoggedIn ? 'Authentication Required' : 'Access Denied'}
+          </h2>
+          <p className="text-slate-500 mt-2">
+            {!isLoggedIn
+              ? 'You need to be logged in to view this page.'
+              : 'You don\'t have permission to view the Approvals page.'}
+          </p>
         </div>
 
         <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-left w-full max-w-md">
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Debug Information</h3>
           <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Status:</span>
+              <span className="font-mono text-slate-700">{!isLoggedIn ? 'Not Logged In' : 'Logged In'}</span>
+            </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Current Role:</span>
               <span className="font-mono text-slate-700">{currentUser?.role || 'None'}</span>
@@ -69,17 +81,16 @@ export default function Approvals() {
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">User ID:</span>
-              <span className="font-mono text-slate-700">{currentUser?.id || 'Not logged in'}</span>
+              <span className="font-mono text-slate-700">{currentUser?.id || 'n/a'}</span>
             </div>
           </div>
-          {!currentUser && (
-            <p className="mt-4 text-xs text-red-500">
-              System could not retrieve your profile. Please try logging out and back in.
-            </p>
-          )}
         </div>
 
-        {currentUser?.email && (
+        {!isLoggedIn ? (
+          <Button onClick={() => window.location.href = '/login'} className="bg-blue-600 hover:bg-blue-700 text-white">
+            Log In
+          </Button>
+        ) : (
           <Button onClick={handleClaimAdmin} className="bg-blue-600 hover:bg-blue-700 text-white">
             Fix Permission (Set Role to ADMIN)
           </Button>
