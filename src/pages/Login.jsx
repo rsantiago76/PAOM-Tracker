@@ -1,20 +1,20 @@
-
 import React, { useEffect } from 'react';
-import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react';
+import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function Login() {
-    const { route } = useAuthenticator((context) => [context.route]);
+    const { isAuthenticated } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const from = location.state?.from?.pathname || '/';
 
     useEffect(() => {
-        if (route === 'authenticated') {
+        if (isAuthenticated) {
             navigate(from, { replace: true });
         }
-    }, [route, navigate, from]);
+    }, [isAuthenticated, navigate, from]);
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-slate-100">
