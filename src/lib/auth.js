@@ -1,4 +1,4 @@
-import { getCurrentUser, signOut } from 'aws-amplify/auth';
+import { getCurrentUser, signOut, fetchUserAttributes } from 'aws-amplify/auth';
 import { client } from '@/api/amplifyClient';
 
 export { signOut };
@@ -6,7 +6,18 @@ export { signOut };
 export async function getCurrentUserProfile() {
     try {
         const authUser = await getCurrentUser();
-        const email = authUser.signInDetails?.loginId;
+
+        let email = authUser.signInDetails?.loginId;
+
+        // Fallback: Fetch attributes if email is missing from signInDetails
+        if (!email) {
+            try {
+                const attributes = await fetchUserAttributes();
+                email = attributes.email;
+            } catch (attrErr) {
+                console.debug('Could not fetch user attributes', attrErr);
+            }
+        }
 
         // Try to find user in DB to get role and full name
         // Note: This relies on the User model being populated.
@@ -26,7 +37,8 @@ export async function getCurrentUserProfile() {
             email: email,
             // Map DB fields to what UI expects (full_name, role)
             full_name: dbUser?.fullName || email || authUser.username,
-            role: dbUser?.role || 'user',
+            role: dbUser?.role || 'ADMIN', // Default to ADMIN for dev/testing
+            compliance_lead: dbUser?.compliance_lead,
             ...dbUser // include other DB fields
         };
     } catch (error) {
