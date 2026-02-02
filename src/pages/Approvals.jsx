@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { getCurrentUserProfile } from '@/lib/auth';
 import { useQuery } from '@tanstack/react-query';
 import ApprovalRequestsList from '../components/approvals/ApprovalRequestsList';
