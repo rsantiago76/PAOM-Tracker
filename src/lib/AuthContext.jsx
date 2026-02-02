@@ -32,6 +32,23 @@ export const AuthProvider = ({ children }) => {
   const checkUser = async () => {
     try {
       setIsLoadingAuth(true);
+
+      // Check for Demo Mode
+      const isDemoMode = localStorage.getItem('poam_demo_mode') === 'true';
+      if (isDemoMode) {
+        const demoUser = {
+          id: 'demo-user-id',
+          email: 'demo@example.com',
+          full_name: 'Demo Admin',
+          role: 'ADMIN',
+          compliance_lead: true
+        };
+        setUser(demoUser);
+        setIsAuthenticated(true);
+        setIsLoadingAuth(false);
+        return;
+      }
+
       const currentUser = await getCurrentUserProfile();
       if (currentUser) {
         setUser(currentUser);
@@ -57,8 +74,14 @@ export const AuthProvider = ({ children }) => {
 
   const activeUser = user ? { ...user, role: impersonatedRole || user.role } : null;
 
+  const loginAsDemoUser = () => {
+    localStorage.setItem('poam_demo_mode', 'true');
+    checkUser();
+  };
+
   const logout = async (shouldRedirect = true) => {
     try {
+      localStorage.removeItem('poam_demo_mode'); // Clear demo mode
       await signOut();
       setUser(null);
       setIsAuthenticated(false);
@@ -86,7 +109,8 @@ export const AuthProvider = ({ children }) => {
       navigateToLogin,
       checkAppState: checkUser,
       switchRole,
-      impersonatedRole
+      impersonatedRole,
+      loginAsDemoUser
     }}>
       {children}
     </AuthContext.Provider>
