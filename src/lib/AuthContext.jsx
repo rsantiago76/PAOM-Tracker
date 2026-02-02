@@ -22,6 +22,7 @@ export const AuthProvider = ({ children }) => {
       } else if (payload.event === 'signedOut') {
         setUser(null);
         setIsAuthenticated(false);
+        setImpersonatedRole(null);
       }
     });
 
@@ -48,11 +49,20 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const [impersonatedRole, setImpersonatedRole] = useState(null);
+
+  const switchRole = (role) => {
+    setImpersonatedRole(role);
+  };
+
+  const activeUser = user ? { ...user, role: impersonatedRole || user.role } : null;
+
   const logout = async (shouldRedirect = true) => {
     try {
       await signOut();
       setUser(null);
       setIsAuthenticated(false);
+      setImpersonatedRole(null);
       if (shouldRedirect) {
         window.location.href = '/login';
       }
@@ -67,13 +77,16 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{
-      user,
+      user: activeUser,
+      originalUser: user,
       isAuthenticated,
       isLoadingAuth,
       authError,
       logout,
       navigateToLogin,
-      checkAppState: checkUser
+      checkAppState: checkUser,
+      switchRole,
+      impersonatedRole
     }}>
       {children}
     </AuthContext.Provider>

@@ -13,6 +13,7 @@ import {
   Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import RoleSwitcher from '@/components/debug/RoleSwitcher';
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = React.useState(null);
@@ -56,8 +57,8 @@ export default function Layout({ children, currentPageName }) {
                     key={item.page}
                     to={createPageUrl(item.page)}
                     className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
-                        ? 'bg-slate-800 text-white'
-                        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      ? 'bg-slate-800 text-white'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                       }`}
                   >
                     <Icon className="w-4 h-4 mr-2" />
@@ -110,8 +111,8 @@ export default function Layout({ children, currentPageName }) {
                     to={createPageUrl(item.page)}
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center px-3 py-2 rounded-lg text-base font-medium ${isActive
-                        ? 'bg-slate-800 text-white'
-                        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      ? 'bg-slate-800 text-white'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                       }`}
                   >
                     <Icon className="w-5 h-5 mr-3" />
@@ -130,6 +131,9 @@ export default function Layout({ children, currentPageName }) {
           {children}
         </div>
       </main>
+
+      {/* Demo Role Switcher - Always visible in dev/demo environment */}
+      <RoleSwitcher />
     </div>
   );
 }
