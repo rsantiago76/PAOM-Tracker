@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import Login from './pages/Login';
 import './App.css'
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -61,6 +62,7 @@ const AuthenticatedApp = () => {
           }
         />
       ))}
+      <Route path="/login" element={<Login />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
