@@ -37,7 +37,7 @@ export default function Layout({ children, currentPageName }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-black/60">
       {/* Top Navigation Bar */}
       <nav className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
         <div className="px-4 sm:px-6 lg:px-8">
