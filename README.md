@@ -66,7 +66,7 @@ graph TD
     UI -->|Reads/Writes| AuthContext
     UI -->|Fetches Data| DataLayer
     
-    AuthContext -->|e.g. 'View Demo'| LocalStorage[Local Storage (Demo Flag)]
+    AuthContext -->|e.g. 'View Demo'| LocalStorage["Local Storage (Demo Flag)"]
     AuthContext -->|Authenticate| Auth
     
     DataLayer -->|CRUD Operations| API
