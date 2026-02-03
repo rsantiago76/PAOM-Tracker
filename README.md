@@ -43,6 +43,36 @@ POAM Tracker is a modern, enterprise-grade web application designed to manage Pl
 
 The application follows a **Modern Single Page Application (SPA)** architecture:
 
+```mermaid
+graph TD
+    User((User))
+    
+    subgraph Client [Client Side (React / Vite)]
+        UI[UI Components]
+        AuthContext[Auth Context]
+        DataLayer[TanStack Query]
+    end
+    
+    subgraph "AWS Cloud (Amplify Gen 2)"
+        Hosting[Amplify Hosting]
+        Auth[Cognito Auth]
+        API[AppSync GraphQL API]
+        DB[(DynamoDB)]
+    end
+
+    User -->|HTTPS| Hosting
+    User -->|Interacts| UI
+    
+    UI -->|Reads/Writes| AuthContext
+    UI -->|Fetches Data| DataLayer
+    
+    AuthContext -->|e.g. 'View Demo'| LocalStorage[Local Storage (Demo Flag)]
+    AuthContext -->|Authenticate| Auth
+    
+    DataLayer -->|CRUD Operations| API
+    API -->|Persist| DB
+```
+
 1.  **Client-Side Rendering**: The UI is fully rendered on the client, providing a snappy, app-like experience.
 2.  **Serverless Backend**: Leverages AWS managed services (Cognito, DynamoDB, AppSync) to eliminate server management overhead.
 3.  **Data Layer**:
@@ -84,12 +114,19 @@ npm run build
 ```
 This will compile the assets to the `dist` folder.
 
-## 🧪 Demo Mode
+## 🧪 Demo Mode & Access
 
-The application includes a specialized "Demo Mode" for portfolio showcases:
--   **Access**: Click "View Demo (Public)" on the login screen.
--   **Mechanism**: Bypasses Cognito auth and injects a mock `ADMIN` user into the application context via `src/lib/auth.js`.
--   **Permissions**: Grants full read/write access to the UI (note: some backend operations may be mocked or restricted).
+The application includes a specialized "Demo Mode" for portfolio showcases.
+
+### How to Access
+**No username or password is required.**
+
+1.  Navigate to the Login page.
+2.  Click the **"View Demo (Public)"** button located below the sign-in form.
+3.  This will grant you immediate **Admin-level access** to explore all features (Approvals, Reporting, System management) using a mock user profile.
+
+> **Note**: This mode runs entirely client-side using a flag in `localStorage` to bypass the AWS Cognito authentication layer.
+
 
 ---
 *Built by [Your Name] - 2026*
