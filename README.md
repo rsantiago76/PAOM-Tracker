@@ -47,7 +47,7 @@ The application follows a **Modern Single Page Application (SPA)** architecture:
 graph TD
     User((User))
     
-    subgraph Client [Client Side (React / Vite)]
+    subgraph Client ["Client Side (React / Vite)"]
         UI[UI Components]
         AuthContext[Auth Context]
         DataLayer[TanStack Query]
